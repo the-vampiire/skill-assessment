@@ -1,10 +1,3 @@
-const suitsMap = {
-  S: 'spades',
-  C: 'clubs',
-  H: 'hearts',
-  D: 'diamonds',
-};
-
 const faceCardMap = {
   T: 10, // ten
   J: 11, // Jack
@@ -30,34 +23,10 @@ const Result = {
 class PokerHand {
   constructor(hand) {
     this._hand = hand.split(' ');
-
-    this.handStatus = {
-      highCard: this._getHighCard(),
-    };
-
-    this.winConditions = {};
+    this.handStatus = {};
+    this.winConditions = { highCard: this._getHighCard() };
 
     this._initialize();
-  }
-
-  compareWith(hand) {
-    const comparisons = [
-     { status: 'hasStraightFlush', winCondition: 'highCard' },
-     { status: 'hasFourOfAKind', winCondition: 'fourOfAKind' },
-     { status: 'hasFullHouse', winCondition: 'threeOfAKind' },
-     { status: 'hasFlush', winCondition: 'highCard' },
-     { status: 'hasStraight', winCondition: 'highCard' },
-     { status: 'hasThreeOfAKind', winCondition: 'threeOfAKind' },
-     { status: 'hasTwoPair', tieBreaker: this._twoPairTieBreaker },
-     { status: 'hasPair', tieBreaker: this._pairTieBreaker },
-    ];
-
-    for(const comparisonRules of comparisons) {
-      const result = this._compareType(...comparisonRules);
-      if (result !== null) return result;
-    }
-
-    return this._compareHighCards(hand);
   }
 
   _getStatuses(hand, status) {
@@ -70,7 +39,7 @@ class PokerHand {
   _getHighest(hand, winCondition) {
     return {
       theirHighest: hand.winConditions[winCondition],
-      ourHighest: hand.winConditions[winCondition],
+      ourHighest: this.winConditions[winCondition],
     };
   }
 
@@ -78,7 +47,7 @@ class PokerHand {
   _declareLoss() { return Result.loss; }
   _declareTie() { return Result.tie; }
 
-  _compareType({ hand, status, winCondition, comparisonIndex, tieBreaker }) {
+  _compareCondition(hand, { status, winCondition, tieBreaker }) {
     const { theyHave, weHave } = this._getStatuses(hand, status);
 
     if (theyHave) {
@@ -96,6 +65,26 @@ class PokerHand {
 
     if (weHave) return this._declareWin();
     return null; // neither has straight flush
+  }
+
+  compareWith(hand) {
+    const comparisons = [
+     { status: 'hasStraightFlush', winCondition: 'highCard' },
+     { status: 'hasFourOfAKind', winCondition: 'fourOfAKind' },
+     { status: 'hasFullHouse', winCondition: 'threeOfAKind' },
+     { status: 'hasFlush', winCondition: 'highCard' },
+     { status: 'hasStraight', winCondition: 'highCard' },
+     { status: 'hasThreeOfAKind', winCondition: 'threeOfAKind' },
+    //  { status: 'hasTwoPair', tieBreaker: this._twoPairTieBreaker },
+    //  { status: 'hasPair', tieBreaker: this._pairTieBreaker },
+    ];
+
+    for(const comparisonRules of comparisons) {
+      const result = this._compareCondition(hand, comparisonRules);
+      if (result !== null) return result;
+    }
+
+    // return this._compareHighCards(hand);
   }
 
   _initialize() {
@@ -134,13 +123,12 @@ class PokerHand {
     });
 
     values.sort((valA, valB) => valA - valB);
-
     let lastValue = values[0];
     for(const value of values.slice(1)) {
       const nextExpectedValue = lastValue + 1;
       if (value !== nextExpectedValue) return;
+      lastValue = value;
     }
-
     this.handStatus.hasStraight = true;
     this.winConditions.straight = values;
   }
@@ -212,14 +200,9 @@ class PokerHand {
 
   _getHighCard() {
     return this._hand.reduce(
-      (highCard, card) => {
-        const rawCardValue = card[0];
-        const cardValue = faceCardMap[rawCardValue] || Number(rawCardValue);
-
-        const rawHighCardValue = highCard[0];
-        const highCardValue = faceCardMap[rawHighCardValue] || Number(rawHighCardValue);
-  
-        return cardValue > highCardValue ? card : highCard;
+      (highCard, [value]) => {
+        const cardValue = faceCardMap[value] || Number(value);
+        return cardValue > highCard ? cardValue : highCard;
       },
       '0',
     );
