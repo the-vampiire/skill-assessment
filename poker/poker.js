@@ -42,38 +42,22 @@ class PokerHand {
 
   compareWith(hand) {
     const comparisons = [
-     { name: 'StraightFlush', status: 'hasStraightFlush', winCondition: 'straight', comparisonIndex: 4 },
-     { name: 'FourOfAKind', status: 'hasFourOfAKind', winCondition: 'fourOfAKind' },
-     { name: 'FullHouse', status: 'hasFullHouse', winCondition: 'threeOfAKind' },
-     { name: 'Flush', status: 'hasFlush', winCondition: , comparisonIndex: },
+     { status: 'hasStraightFlush', winCondition: 'highCard' },
+     { status: 'hasFourOfAKind', winCondition: 'fourOfAKind' },
+     { status: 'hasFullHouse', winCondition: 'threeOfAKind' },
+     { status: 'hasFlush', winCondition: 'highCard' },
+     { status: 'hasStraight', winCondition: 'highCard' },
+     { status: 'hasThreeOfAKind', winCondition: 'threeOfAKind' },
+     { status: 'hasTwoPair', tieBreaker: this._twoPairTieBreaker },
+     { status: 'hasPair', tieBreaker: this._pairTieBreaker },
     ];
 
-    for(const comparison of comparisons) {
-      const { name, status, winCondition, comparisonIndex } = comparison;
-      const methodName = `_compare${name}`;
-      const result = this[methodName](hand, status, winCondition, comparisonIndex);
+    for(const comparisonRules of comparisons) {
+      const result = this._compareType(...comparisonRules);
       if (result !== null) return result;
     }
-  }
 
-  _compareType(hand, status, winCondition, comparisonIndex) {
-    const { theyHave, weHave } = this._getStatuses(hand, status);
-
-    if (theyHave) {
-      if (weHave) {
-        const { theirHighest, ourHighest } = this._getHighest(hand, winCondition);
-        // optional specific index to compare
-        const theirs = comparisonIndex !== undefined ? theirHighest[comparisonIndex] : theirHighest;
-        const ours = comparisonIndex !== undefined ? ourHighest[comparisonIndex] : ourHighest;
-
-        if (theirs === ours) return this._declareTie();
-        return theirs > ours ? this._declareLoss() : this._declareWin();
-      };
-      return this._declareLoss();
-    }
-
-    if (weHave) return this._declareWin();
-    return null; // neither has straight flush
+    return this._compareHighCards(hand);
   }
 
   _getStatuses(hand, status) {
@@ -90,16 +74,28 @@ class PokerHand {
     };
   }
 
-  _compareStraightFlush(hand) {
-    return this._compareType(hand, 'hasStraightFlush', 'straight', 4);
-  }
+  _declareWin() { return Result.win; }
+  _declareLoss() { return Result.loss; }
+  _declareTie() { return Result.tie; }
 
-  _compareFourOfAKind(hand) {
-    return this._compareType(hand, 'hasFourOfAKind', 'fourOfAKind');
-  }
+  _compareType({ hand, status, winCondition, comparisonIndex, tieBreaker }) {
+    const { theyHave, weHave } = this._getStatuses(hand, status);
 
-  _compareFullHouse(hand) {
-    return this._compareType(hand, 'hasFullHouse', 'threeOfAKind');
+    if (theyHave) {
+      if (weHave) {
+        // custom tie breaker method
+        if (tieBreaker) return tieBreaker(hand);
+  
+        // default tie breaker approach
+        const { theirHighest, ourHighest } = this._getHighest(hand, winCondition);
+        if (theirHighest === ourHighest) return this._declareTie();
+        return theirHighest > ourHighest ? this._declareLoss() : this._declareWin();
+      };
+      return this._declareLoss();
+    }
+
+    if (weHave) return this._declareWin();
+    return null; // neither has straight flush
   }
 
   _initialize() {
@@ -120,10 +116,6 @@ class PokerHand {
     // only test two pair if no full house is found
     if (!this.handStatus.hasFullHouse) this._checkTwoPair();
   }
-
-  _declareWin() { return Result.win; }
-  _declareLoss() { return Result.loss; }
-  _declareTie() { return Result.tie; }
 
   _checkFlush() {
     const suitToCheck = this._hand[0][1];
