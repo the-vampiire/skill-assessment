@@ -1,5 +1,18 @@
-const PokerHand = require('./poker-function');
+const PokerHand = require('./poker');
 
+test('getHighCard', () => {
+  const p1 = new PokerHand("AC 2C 5D JS 3C");
+  const highCard = p1.getHighCard();
+  expect(highCard.card).toBe("AC");
+  expect(highCard.value).toBe(14);
+});
+
+test('highest straight flush wins', () => {
+  const p1 = new PokerHand("2H 3H 4H 5H 6H");
+  const p2 = new PokerHand("KS AS TS QS JS");
+  const result = p1.compareWith(p2);
+  expect(result).toBe(2);
+});
 
 test('highest 4 of a kind', () => {
   const p1 = new PokerHand("AS AH 2H AD AC");
